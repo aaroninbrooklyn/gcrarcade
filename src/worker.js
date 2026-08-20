@@ -10,7 +10,8 @@ const TABLES = {
   branches: 'tbl85y70gsioMdlql',
   staff: 'tblr8wA0mj4ZXpCnf',
   sessions: 'tblLwAgtWCmlJ4iQP',
-  activity: 'tblOWopl1f8fMNv24'
+  activity: 'tblOWopl1f8fMNv24',
+  officials: 'tblBbHu6xGfAeSp9A'
 };
 
 function json(obj, status) {
