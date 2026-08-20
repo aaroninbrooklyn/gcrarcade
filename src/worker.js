@@ -1,7 +1,7 @@
-// Cloudflare Pages Function: proxies the arcade's Airtable calls server-side
-// so the Airtable token never reaches the browser. Configure the token as an
-// encrypted environment variable named AIRTABLE_TOKEN in the Pages project
-// settings (Settings -> Environment variables).
+// Cloudflare Worker: serves the static arcade from ./public and proxies
+// /api/* to Airtable server-side, so the Airtable token never reaches the
+// browser. Configure the token as a secret named AIRTABLE_TOKEN in the
+// Worker's Settings -> Variables and Secrets.
 
 const AIRTABLE_BASE = 'appjdr98QEubdKKna';
 
@@ -20,13 +20,12 @@ function json(obj, status) {
   });
 }
 
-export async function onRequest(context) {
-  const { request, env, params } = context;
-  const [resource] = params.path || [];
+async function handleApi(request, env, url) {
+  const resource = url.pathname.split('/')[2]; // /api/<resource>
   const method = request.method;
 
   if (!env.AIRTABLE_TOKEN) {
-    return json({ error: 'Server is missing the AIRTABLE_TOKEN environment variable' }, 500);
+    return json({ error: 'Server is missing the AIRTABLE_TOKEN secret' }, 500);
   }
 
   const tableId = TABLES[resource];
@@ -38,7 +37,6 @@ export async function onRequest(context) {
     return json({ error: 'Method not allowed' }, 405);
   }
 
-  const url = new URL(request.url);
   const target = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${tableId}${method === 'GET' ? url.search : ''}`;
 
   const init = {
@@ -59,3 +57,13 @@ export async function onRequest(context) {
     headers: { 'Content-Type': 'application/json' }
   });
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith('/api/')) {
+      return handleApi(request, env, url);
+    }
+    return env.ASSETS.fetch(request);
+  }
+};
