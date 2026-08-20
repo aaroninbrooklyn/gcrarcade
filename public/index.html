@@ -565,7 +565,6 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   </div>
   <div class="nav-right">
     <div class="nav-status" id="connStatus"><span class="dot"></span> Demo Mode</div>
-    <button class="btn-settings" onclick="openSettings()">&#9881;</button>
   </div>
 </nav>
 
@@ -623,23 +622,6 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
     <p>Brooklyn Public Library &middot; Government &amp; Community Relations &middot; <span class="bpl-link">GCR Engagement Arcade</span></p>
   </div>
 </main>
-
-<!-- Settings Modal -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <h2>Airtable Connection</h2>
-    <p>Enter your Airtable Personal Access Token to enable live data sync. All mission sessions, activity logs, and player stats flow directly to and from your Airtable base. Without a token, the app runs in demo mode with embedded sample data.</p>
-    <div class="form-group">
-      <label class="form-label">Personal Access Token</label>
-      <input class="form-input" type="password" id="patInput" placeholder="patXXXXX.XXXX...">
-      <div class="form-help">Create one at airtable.com/create/tokens with access to this base.</div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
-    </div>
-  </div>
-</div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
@@ -739,7 +721,7 @@ const FALLBACK = {
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
-let PAT = localStorage.getItem('airtable_pat') || '';
+let LIVE = false;
 let DATA = { missions: [], branches: [], staff: [] };
 let sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null };
 
@@ -755,31 +737,31 @@ const LEVELS = [
 const AVATAR_COLORS = ['#3C5CAA','#00B2D8','#F16547','#12B259','#E00079','#484E82','#009798','#B3375B'];
 
 // ═══════════════════════════════════════════════════════════════
-// AIRTABLE API
+// AIRTABLE API (proxied through /api/* so no token ever reaches the browser)
 // ═══════════════════════════════════════════════════════════════
-async function airtableFetch(tableId, params = {}) {
-  const url = new URL(`https://api.airtable.com/v0/${AIRTABLE.baseId}/${tableId}`);
+async function airtableFetch(resource, params = {}) {
+  const url = new URL(`/api/${resource}`, location.origin);
   Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
-  const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${PAT}` } });
-  if (!resp.ok) throw new Error(`Airtable API ${resp.status}`);
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`API ${resp.status}`);
   return resp.json();
 }
 
-async function airtableCreate(tableId, records) {
+async function airtableCreate(resource, records) {
   const body = { records: Array.isArray(records) ? records : [records], typecast: true };
-  const resp = await fetch(`https://api.airtable.com/v0/${AIRTABLE.baseId}/${tableId}`, {
+  const resp = await fetch(`/api/${resource}`, {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${PAT}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API ${resp.status}`); }
   return resp.json();
 }
 
-async function airtableUpdate(tableId, recordId, fields) {
-  const resp = await fetch(`https://api.airtable.com/v0/${AIRTABLE.baseId}/${tableId}`, {
+async function airtableUpdate(resource, recordId, fields) {
+  const resp = await fetch(`/api/${resource}`, {
     method: 'PATCH',
-    headers: { 'Authorization': `Bearer ${PAT}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ records: [{ id: recordId, fields }], typecast: true })
   });
   if (!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || `API ${resp.status}`); }
@@ -790,26 +772,22 @@ async function airtableUpdate(tableId, recordId, fields) {
 // DATA LOADING
 // ═══════════════════════════════════════════════════════════════
 async function loadData() {
-  if (PAT) {
-    try {
-      showToast('Connecting to Airtable...', 'info');
-      const [m, b, s] = await Promise.all([
-        airtableFetch(AIRTABLE.tables.missions, { pageSize: 100 }),
-        airtableFetch(AIRTABLE.tables.branches, { pageSize: 100 }),
-        airtableFetch(AIRTABLE.tables.staff, { pageSize: 100 })
-      ]);
-      DATA.missions = m.records.map(parseMission);
-      DATA.branches = b.records.map(parseBranch).filter(x => x.name).sort((a,c) => a.name.localeCompare(c.name));
-      DATA.staff = s.records.map(parseStaff).filter(x => x.name);
-      document.getElementById('connStatus').innerHTML = '<span class="dot"></span> Connected';
-      document.getElementById('connStatus').classList.add('connected');
-      showToast('Connected to Airtable!', 'success');
-    } catch (e) {
-      console.error(e);
-      showToast('Airtable connection failed - using demo data', 'error');
-      DATA = JSON.parse(JSON.stringify(FALLBACK));
-    }
-  } else {
+  try {
+    const [m, b, s] = await Promise.all([
+      airtableFetch('missions', { pageSize: 100 }),
+      airtableFetch('branches', { pageSize: 100 }),
+      airtableFetch('staff', { pageSize: 100 })
+    ]);
+    DATA.missions = m.records.map(parseMission);
+    DATA.branches = b.records.map(parseBranch).filter(x => x.name).sort((a,c) => a.name.localeCompare(c.name));
+    DATA.staff = s.records.map(parseStaff).filter(x => x.name);
+    LIVE = true;
+    document.getElementById('connStatus').innerHTML = '<span class="dot"></span> Connected';
+    document.getElementById('connStatus').classList.add('connected');
+  } catch (e) {
+    console.error(e);
+    showToast('Airtable connection failed - using demo data', 'error');
+    LIVE = false;
     DATA = JSON.parse(JSON.stringify(FALLBACK));
   }
   renderHome();
@@ -1096,13 +1074,13 @@ async function playSubmitSession() {
 
   sessionState.recommended = recommendMissions(sessionState.time, sessionState.goal, sessionState.surprise);
 
-  if (PAT) {
+  if (LIVE) {
     try {
       if (sessionState.recommended.length > 0) {
         fields[AIRTABLE.fields.sessions.recMission] = sessionState.recommended.map(m => m.id);
         fields[AIRTABLE.fields.sessions.status] = 'Mission recommended';
       }
-      const result = await airtableCreate(AIRTABLE.tables.sessions, { fields });
+      const result = await airtableCreate('sessions', { fields });
       sessionState.sessionId = result.records[0].id;
       showToast('Session created in Airtable!', 'success');
     } catch (e) {
@@ -1177,9 +1155,9 @@ async function playSelectMission(missionId) {
   sessionState.selected = DATA.missions.find(m => m.id === missionId);
   sessionState.step = 4;
 
-  if (PAT && sessionState.sessionId && !sessionState.sessionId.startsWith('demo_')) {
+  if (LIVE && sessionState.sessionId && !sessionState.sessionId.startsWith('demo_')) {
     try {
-      await airtableUpdate(AIRTABLE.tables.sessions, sessionState.sessionId, {
+      await airtableUpdate('sessions', sessionState.sessionId, {
         [AIRTABLE.fields.sessions.selMission]: [missionId],
         [AIRTABLE.fields.sessions.status]: 'Mission selected'
       });
@@ -1287,7 +1265,7 @@ async function submitCompletion() {
   const m = sessionState.selected;
   const activityName = `${sessionState.name} - ${m.name} - ${new Date().toLocaleDateString()}`;
 
-  if (PAT && sessionState.sessionId && !sessionState.sessionId.startsWith('demo_')) {
+  if (LIVE && sessionState.sessionId && !sessionState.sessionId.startsWith('demo_')) {
     try {
       const actFields = {};
       actFields[AIRTABLE.fields.activity.name] = activityName;
@@ -1302,9 +1280,9 @@ async function submitCompletion() {
       if (sessionState.branchId) actFields[AIRTABLE.fields.activity.branch] = [sessionState.branchId];
       actFields[AIRTABLE.fields.activity.session] = [sessionState.sessionId];
 
-      await airtableCreate(AIRTABLE.tables.activity, { fields: actFields });
+      await airtableCreate('activity', { fields: actFields });
 
-      await airtableUpdate(AIRTABLE.tables.sessions, sessionState.sessionId, {
+      await airtableUpdate('sessions', sessionState.sessionId, {
         [AIRTABLE.fields.sessions.status]: 'Completed',
         [AIRTABLE.fields.sessions.completed]: new Date().toISOString()
       });
@@ -1474,23 +1452,6 @@ function renderLeaderboard() {
         </div>
       </div>`;
   }).join('');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SETTINGS
-// ═══════════════════════════════════════════════════════════════
-function openSettings() {
-  document.getElementById('patInput').value = PAT;
-  document.getElementById('settingsModal').classList.add('show');
-}
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('show');
-}
-async function saveSettings() {
-  PAT = document.getElementById('patInput').value.trim();
-  localStorage.setItem('airtable_pat', PAT);
-  closeSettings();
-  await loadData();
 }
 
 // ═══════════════════════════════════════════════════════════════
