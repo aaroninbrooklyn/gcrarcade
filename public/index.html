@@ -754,7 +754,7 @@ const FALLBACK = {
 // ═══════════════════════════════════════════════════════════════
 let LIVE = false;
 let DATA = { missions: [], branches: [], staff: [], officials: [] };
-let sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null };
+let sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null };
 
 const LEVELS = [
   { name: 'Getting started', min: 0, max: 50, cls: 'lvl-0' },
@@ -1276,6 +1276,12 @@ async function playSelectMission(missionId) {
   sessionState.selected = DATA.missions.find(m => m.id === missionId);
   sessionState.step = 4;
 
+  const branch = DATA.branches.find(b => b.id === sessionState.branchId);
+  const contactable = findOfficialsForBranch(branch).filter(e => e.official);
+  sessionState.assignedOfficial = contactable.length
+    ? contactable[Math.floor(Math.random() * contactable.length)]
+    : null;
+
   if (LIVE && sessionState.sessionId && !sessionState.sessionId.startsWith('demo_')) {
     try {
       await airtableUpdate('sessions', sessionState.sessionId, {
@@ -1308,6 +1314,22 @@ function renderPlayStep4() {
         <span class="tag tag-stage">${m.stage}</span>
         ${m.gcr ? '<span class="tag tag-gcr">Requires GCR</span>' : ''}
       </div>
+      ${sessionState.assignedOfficial ? `
+      <div class="md-section">
+        <h3>&#9656; Suggested Contact</h3>
+        <div class="official-card" style="text-align:left; display:flex; gap:16px; align-items:flex-start;">
+          ${sessionState.assignedOfficial.official.photo
+            ? `<img class="official-photo" style="width:64px; height:64px; margin:0; flex-shrink:0;" src="${sessionState.assignedOfficial.official.photo}" alt="${sessionState.assignedOfficial.name}">`
+            : `<div class="official-photo official-photo-placeholder" style="width:64px; height:64px; margin:0; flex-shrink:0; font-size:24px;">&#128100;</div>`}
+          <div>
+            <div class="official-name">${sessionState.assignedOfficial.name}</div>
+            <div class="official-title">${sessionState.assignedOfficial.title}</div>
+            ${sessionState.assignedOfficial.official.email ? `<div class="official-contact">&#9993;&#65039; ${sessionState.assignedOfficial.official.email}</div>` : ''}
+            ${sessionState.assignedOfficial.official.phone ? `<div class="official-contact">&#128222; ${sessionState.assignedOfficial.official.phone}</div>` : ''}
+            ${sessionState.assignedOfficial.official.addr1 ? `<div class="official-contact">&#128205; ${sessionState.assignedOfficial.official.addr1}${sessionState.assignedOfficial.official.addr3 ? ', ' + sessionState.assignedOfficial.official.addr3 : ''}</div>` : ''}
+          </div>
+        </div>
+      </div>` : ''}
       <div class="md-section">
         <h3>&#9656; Instructions</h3>
         <p>${m.inst}</p>
@@ -1391,6 +1413,7 @@ async function submitCompletion() {
       const actFields = {};
       actFields[AIRTABLE.fields.activity.name] = activityName;
       actFields[AIRTABLE.fields.activity.mission] = [m.id];
+      if (sessionState.assignedOfficial) actFields[AIRTABLE.fields.activity.official] = [sessionState.assignedOfficial.official.id];
       actFields[AIRTABLE.fields.activity.type] = type;
       actFields[AIRTABLE.fields.activity.outcome] = outcome;
       actFields[AIRTABLE.fields.activity.xp] = m.xp;
@@ -1439,7 +1462,7 @@ function renderPlayComplete(m) {
 }
 
 function resetSession() {
-  sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null };
+  sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null };
 }
 
 // ═══════════════════════════════════════════════════════════════
