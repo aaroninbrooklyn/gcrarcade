@@ -774,7 +774,14 @@ async function airtableFetch(resource, params = {}) {
   const url = new URL(`/api/${resource}`, location.origin);
   Object.entries(params).forEach(([k,v]) => url.searchParams.set(k, v));
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`API ${resp.status}`);
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const e = await resp.json();
+      detail = e.error?.message || e.error || detail;
+    } catch (_) {}
+    throw new Error(`${resource}: ${detail}`);
+  }
   return resp.json();
 }
 
@@ -819,7 +826,7 @@ async function loadData() {
     document.getElementById('connStatus').classList.add('connected');
   } catch (e) {
     console.error(e);
-    showToast('Airtable connection failed - using demo data', 'error');
+    showToast('Airtable connection failed: ' + e.message, 'error');
     LIVE = false;
     DATA = JSON.parse(JSON.stringify(FALLBACK));
   }
