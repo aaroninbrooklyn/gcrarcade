@@ -111,8 +111,10 @@ nav {
 .nav-arcade-tag {
   font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px;
   color: var(--bpl-orange); padding-left: 12px; border-left: 3px solid var(--bpl-orange);
-  letter-spacing: 0.5px; text-transform: uppercase;
+  letter-spacing: 0.5px; text-transform: uppercase; text-decoration: none;
+  transition: opacity 0.2s;
 }
+.nav-arcade-tag:hover { opacity: 0.8; }
 
 .nav-links { display: flex; gap: 2px; }
 .nav-link {
@@ -154,17 +156,7 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
 @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Hero */
-.hero { text-align: center; padding: 56px 0 48px; }
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 800; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--bpl-blue);
-  padding: 8px 20px; border: 1px solid var(--bpl-blue-pale); border-radius: 24px;
-  background: var(--bg-accent); margin-bottom: 28px;
-  font-family: 'Montserrat', sans-serif;
-}
-.hero-badge .bpl-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--bpl-orange); }
-
+.hero { text-align: center; padding: 20px 0 48px; }
 .hero h1 {
   font-family: 'Montserrat', sans-serif; font-size: clamp(36px, 7vw, 68px);
   font-weight: 900; line-height: 1.02; margin-bottom: 20px;
@@ -578,7 +570,7 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
       <div class="bpl-mark">
         <img class="b" src="/bpl-logo.png" alt="Brooklyn Public Library">
       </div>
-      <div class="nav-arcade-tag">GCR Arcade</div>
+      <a class="nav-arcade-tag" href="https://brooklynpubliclibrary.sharepoint.com/government/SitePages/Home.aspx" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Government and Community Relations</a>
     </div>
   </div>
   <div class="nav-links">
@@ -596,7 +588,6 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   <!-- HOME -->
   <div class="view active" id="view-home">
     <div class="hero">
-      <div class="hero-badge"><span class="bpl-dot"></span> Brooklyn Public Library &middot; Government &amp; Community Relations</div>
       <h1>Civic Engagement<br><span class="accent">Arcade</span></h1>
       <p>Got a few minutes to spare at the desk? Want to help keep your branch top of mind when elected officials are deciding where to direct funding, resources, and support? You&rsquo;re in the right place.</p>
       <p>GCR Arcade turns government and community relations work into quick, practical missions you can complete in the time you have.</p>
