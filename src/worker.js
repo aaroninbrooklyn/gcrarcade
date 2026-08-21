@@ -38,7 +38,14 @@ async function handleApi(request, env, url) {
     return json({ error: 'Method not allowed' }, 405);
   }
 
-  const target = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${tableId}${method === 'GET' ? url.search : ''}`;
+  // returnFieldsByFieldId is required on every call (read and write) because
+  // the app's field maps use Airtable field IDs, not field names, and the
+  // Airtable API keys `fields` by name unless this is explicitly requested.
+  const target = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${tableId}`);
+  if (method === 'GET') {
+    for (const [k, v] of url.searchParams) target.searchParams.set(k, v);
+  }
+  target.searchParams.set('returnFieldsByFieldId', 'true');
 
   const init = {
     method,
@@ -51,7 +58,7 @@ async function handleApi(request, env, url) {
     init.body = await request.text();
   }
 
-  const resp = await fetch(target, init);
+  const resp = await fetch(target.toString(), init);
   const text = await resp.text();
   return new Response(text, {
     status: resp.status,
