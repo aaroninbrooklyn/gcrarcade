@@ -545,8 +545,9 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   text-align: center; padding: 32px 0; margin-top: 40px;
   border-top: 1px solid var(--border-light);
 }
-.footer p { font-size: 13px; color: var(--text-faint); font-weight: 500; }
-.footer .bpl-link { color: var(--bpl-blue); font-weight: 700; }
+.footer p { font-size: 13px; color: var(--text-faint); font-weight: 500; max-width: 640px; margin: 0 auto; }
+.footer .bpl-link { color: var(--bpl-blue); font-weight: 700; text-decoration: none; }
+.footer .bpl-link:hover { text-decoration: underline; }
 
 /* Responsive */
 @media (max-width: 640px) {
@@ -596,8 +597,11 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   <div class="view active" id="view-home">
     <div class="hero">
       <div class="hero-badge"><span class="bpl-dot"></span> Brooklyn Public Library &middot; Government &amp; Community Relations</div>
-      <h1>Engagement<br><span class="accent">Arcade</span></h1>
-      <p>Turn stakeholder engagement into quick, practical missions you can complete in the time you have. Choose your available time and what you want to accomplish - the Arcade matches you with a focused action to build stronger relationships with elected officials.</p>
+      <h1>Civic Engagement<br><span class="accent">Arcade</span></h1>
+      <p>Got a few minutes to spare at the desk? Want to help keep your branch top of mind when elected officials are deciding where to direct funding, resources, and support? You&rsquo;re in the right place.</p>
+      <p>GCR Arcade turns government and community relations work into quick, practical missions you can complete in the time you have.</p>
+      <p>Choose how much time you have and what you want to accomplish. GCR Arcade will match you with a focused action designed to strengthen your branch&rsquo;s relationships with the elected officials who represent your community.</p>
+      <p>A few minutes. One mission. Stronger relationships for your branch.</p>
       <button class="coin-btn" onclick="show('play')"><span class="coin-icon">&#127918;</span> Insert Coin to Start</button>
     </div>
     <div class="stats-row" id="homeStats"></div>
@@ -642,7 +646,7 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   </div>
 
   <div class="footer">
-    <p>Brooklyn Public Library &middot; Government &amp; Community Relations &middot; <span class="bpl-link">GCR Engagement Arcade</span></p>
+    <p>Before you get started, check the button in the top-right corner and make sure it says Connected. This ensures your progress is recorded in the backend. If it does not say Connected, contact Aaron Soriano at <a class="bpl-link" href="mailto:ASoriano@bklynlibrary.org">ASoriano@bklynlibrary.org</a> and he&rsquo;ll get it fixed.</p>
   </div>
 </main>
 
