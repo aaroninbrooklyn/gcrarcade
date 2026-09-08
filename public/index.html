@@ -746,7 +746,7 @@ const FALLBACK = {
 // ═══════════════════════════════════════════════════════════════
 let LIVE = false;
 let DATA = { missions: [], branches: [], staff: [], officials: [] };
-let sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null };
+let sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null, directMissionId: null };
 
 const LEVELS = [
   { name: 'Getting started', min: 0, max: 50, cls: 'lvl-0' },
@@ -991,6 +991,7 @@ function renderPlayStep1() {
   if (isReturning) {
     const staffOpts = DATA.staff.filter(s => s.name && s.name !== '(Unassigned)').map(s =>
       `<option value="${s.id}">${s.name}${s.branch ? ' - ' + s.branch : ''}</option>`).join('');
+    const branchOpts = DATA.branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
     formHtml = `
       <div class="form-group">
         <label class="form-label">Select your profile <span class="req">*</span></label>
@@ -998,6 +999,14 @@ function renderPlayStep1() {
           <option value="">Choose your name...</option>
           ${staffOpts}
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Branch</label>
+        <select class="form-select" id="pReturningBranch">
+          <option value="">Use the branch saved to my profile</option>
+          ${branchOpts}
+        </select>
+        <div class="form-help">Choose a branch here if your profile does not already show one.</div>
       </div>`;
   } else {
     const branchOpts = DATA.branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
@@ -1040,7 +1049,8 @@ function playSubmitPlayer() {
     sessionState.name = s.name;
     sessionState.email = s.email;
     const b = DATA.branches.find(x => x.id === s.branch) || DATA.branches.find(x => x.name === s.branch);
-    sessionState.branchId = b ? b.id : '';
+    sessionState.branchId = document.getElementById('pReturningBranch').value || (b ? b.id : '');
+    if (!sessionState.branchId) return showToast('Please select your branch', 'error');
   } else {
     const name = document.getElementById('pName').value.trim();
     const branchId = document.getElementById('pBranch').value;
@@ -1052,12 +1062,16 @@ function playSubmitPlayer() {
     sessionState.branchId = branchId;
     sessionState.email = email;
   }
-  if (sessionState.branchId) {
-    renderPlayOfficials();
-  } else {
-    sessionState.step = 2;
-    renderPlay();
+  renderPlayOfficials();
+}
+
+function continueAfterPlayer() {
+  if (sessionState.directMissionId) {
+    startDirectMissionSession();
+    return;
   }
+  sessionState.step = 2;
+  renderPlay();
 }
 
 function findOfficialsForBranch(branch) {
@@ -1112,8 +1126,60 @@ function renderPlayOfficials() {
     `}
     <div style="margin-top:20px; display:flex; gap:10px;">
       <button class="btn btn-ghost" onclick="sessionState.step=1;renderPlay()">&#8592; Back</button>
-      <button class="btn btn-primary" onclick="sessionState.step=2;renderPlay()">Continue &#8594;</button>
+      <button class="btn btn-primary" id="playerContinueBtn" onclick="continueAfterPlayer()">Continue &#8594;</button>
     </div>`;
+}
+
+async function startDirectMissionSession() {
+  const m = DATA.missions.find(x => x.id === sessionState.directMissionId);
+  if (!m) return showToast('Mission not found', 'error');
+
+  const btn = document.getElementById('playerContinueBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting mission...'; }
+
+  sessionState.time = m.time;
+  sessionState.goal = m.goals[0] || '';
+  sessionState.recommended = [m];
+  sessionState.selected = m;
+
+  const fields = {};
+  fields[AIRTABLE.fields.sessions.played] = sessionState.played;
+  fields[AIRTABLE.fields.sessions.time] = sessionState.time;
+  if (sessionState.goal) fields[AIRTABLE.fields.sessions.goal] = sessionState.goal;
+  fields[AIRTABLE.fields.sessions.status] = 'Mission selected';
+  fields[AIRTABLE.fields.sessions.surprise] = false;
+  fields[AIRTABLE.fields.sessions.recMission] = [m.id];
+  fields[AIRTABLE.fields.sessions.selMission] = [m.id];
+
+  if (sessionState.played === 'No') {
+    fields[AIRTABLE.fields.sessions.name] = sessionState.name;
+    fields[AIRTABLE.fields.sessions.email] = sessionState.email;
+    fields[AIRTABLE.fields.sessions.branch] = [sessionState.branchId];
+  }
+  if (sessionState.staffId) fields[AIRTABLE.fields.sessions.staff] = [sessionState.staffId];
+
+  if (LIVE) {
+    try {
+      const result = await airtableCreate('sessions', { fields });
+      sessionState.sessionId = result.records[0].id;
+      showToast('Mission started and saved to Airtable!', 'success');
+    } catch (e) {
+      showToast('Error starting mission: ' + e.message, 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Continue →'; }
+      return;
+    }
+  } else {
+    sessionState.sessionId = 'demo_' + Date.now();
+    showToast('Demo mission started (connect Airtable to sync)', 'info');
+  }
+
+  const branch = DATA.branches.find(b => b.id === sessionState.branchId);
+  const contactable = findOfficialsForBranch(branch).filter(e => e.official);
+  sessionState.assignedOfficial = contactable.length
+    ? contactable[Math.floor(Math.random() * contactable.length)]
+    : null;
+  sessionState.step = 4;
+  renderPlay();
 }
 
 function renderPlayStep2() {
@@ -1336,7 +1402,7 @@ function renderPlayStep4() {
       </div>
     </div>
     <div style="text-align:center; margin:24px 0;">
-      <button class="btn btn-ghost" onclick="sessionState.step=3;renderPlay()">&#8592; Pick Different Mission</button>
+      <button class="btn btn-ghost" onclick="goBackFromMission()">&#8592; Pick Different Mission</button>
       <button class="btn btn-warm" onclick="showCompleteForm()">Log Activity &amp; Complete &#10003;</button>
     </div>
     <div id="completeForm" style="display:none;"></div>`;
@@ -1382,6 +1448,16 @@ function showCompleteForm() {
       </div>
     </div>`;
   document.getElementById('completeForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+function goBackFromMission() {
+  if (sessionState.directMissionId) {
+    resetSession();
+    show('library');
+    return;
+  }
+  sessionState.step = 3;
+  renderPlay();
 }
 
 async function submitCompletion() {
@@ -1454,7 +1530,7 @@ function renderPlayComplete(m) {
 }
 
 function resetSession() {
-  sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null };
+  sessionState = { step: 0, played: '', name: '', email: '', branchId: '', staffId: '', time: '', goal: '', surprise: false, sessionId: null, recommended: [], selected: null, assignedOfficial: null, directMissionId: null };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1547,9 +1623,8 @@ function startMissionFromLibrary(id) {
   resetSession();
   const m = DATA.missions.find(x => x.id === id);
   if (!m) return;
-  sessionState.time = m.time;
-  sessionState.goal = m.goals[0] || '';
-  sessionState.step = 2;
+  sessionState.directMissionId = id;
+  sessionState.step = 0;
   show('play');
 }
 
