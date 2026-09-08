@@ -159,10 +159,14 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
 .hero { text-align: center; padding: 20px 0 48px; }
 .hero h1 {
   font-family: 'Montserrat', sans-serif; font-size: clamp(36px, 7vw, 68px);
-  font-weight: 900; line-height: 1.02; margin-bottom: 20px;
+  font-weight: 900; line-height: 1.02; margin-bottom: 12px;
   color: var(--bpl-blue); letter-spacing: -1.5px;
 }
 .hero h1 .accent { color: var(--bpl-orange); }
+.hero .hero-byline {
+  font-size: 12px; font-style: italic; line-height: 1.4;
+  margin: 0 auto 28px; color: var(--text-faint);
+}
 .hero p {
   font-size: 18px; color: var(--text-dim); max-width: 580px;
   margin: 0 auto 36px; line-height: 1.65; font-weight: 400;
@@ -588,7 +592,8 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
   <!-- HOME -->
   <div class="view active" id="view-home">
     <div class="hero">
-      <h1>Civic Engagement<br><span class="accent">Arcade</span></h1>
+      <h1>The Civic Engagement Navigator</h1>
+      <p class="hero-byline">A tool for Civic Engagement by the Government and Community Relations Team</p>
       <p>Got a few minutes at the desk? Use Navigator to strengthen relationships with your elected officials and keep them connected to what&rsquo;s happening at your branch.</p>
       <p>Tell Navigator how much time you have and what you want to accomplish, and it&rsquo;ll match you with a mission.</p>
       <p>Click <strong>Begin</strong> to get started, or browse missions from the menu above.</p>
