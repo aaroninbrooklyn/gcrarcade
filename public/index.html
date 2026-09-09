@@ -582,6 +582,7 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
     <button class="nav-link" data-nav="play" onclick="show('play')">Play</button>
     <button class="nav-link" data-nav="library" onclick="show('library')">Missions</button>
     <button class="nav-link" data-nav="leaderboard" onclick="show('leaderboard')">Leaderboard</button>
+    <button class="nav-link" data-nav="electeds" onclick="show('electeds')">Electeds that Rep Your Branch</button>
   </div>
   <div class="nav-right">
     <div class="nav-status" id="connStatus"><span class="dot"></span> Demo Mode</div>
@@ -631,6 +632,11 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
       <span class="filter-count" id="filterCount"></span>
     </div>
     <div class="mission-grid" id="libraryGrid"></div>
+  </div>
+
+  <!-- ELECTEDS -->
+  <div class="view" id="view-electeds">
+    <div id="electeds-content"></div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -918,6 +924,7 @@ function show(view) {
   if (view === 'play') renderPlay();
   if (view === 'library') renderLibrary();
   if (view === 'leaderboard') renderLeaderboard();
+  if (view === 'electeds') renderElecteds();
   if (view === 'home') renderHome();
   window.scrollTo(0, 0);
 }
@@ -1150,6 +1157,53 @@ function findOfficialsForBranch(branch) {
     });
   });
   return result;
+}
+
+function renderElecteds() {
+  const content = document.getElementById('electeds-content');
+  if (!content) return;
+
+  const preselectedBranchId = sessionState.branchId || sessionStorage.getItem('navigator_branchId') || '';
+  const branchOpts = DATA.branches.map(b => '<option value="' + b.id + '"' + (b.id === preselectedBranchId ? ' selected' : '') + '>' + b.name + '</option>').join('');
+
+  const selectedBranchId = document.getElementById('electedsBranchSelect') ? document.getElementById('electedsBranchSelect').value : preselectedBranchId;
+  const branch = DATA.branches.find(b => b.id === selectedBranchId);
+  const entries = branch ? findOfficialsForBranch(branch) : [];
+
+  content.innerHTML = `
+    <div class="section-title"><span class="icon">&#127963;</span> Electeds that Rep Your Branch</div>
+    <div class="section-sub">Select a branch to see the elected officials who represent it.</div>
+    <div class="form-card" style="max-width:560px; margin:0 auto 28px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Branch</label>
+        <select class="form-select" id="electedsBranchSelect" onchange="renderElecteds()">
+          <option value="">Select a branch...</option>
+          ${branchOpts}
+        </select>
+      </div>
+    </div>
+    ${!branch ? '' : (entries.length === 0 ? `
+      <div class="form-card" style="text-align:center; color:var(--text-dim);">No elected officials are on file for this branch yet.</div>
+    ` : `
+      <div class="officials-grid">
+        ${entries.map(e => `
+          <div class="official-card">
+            ${e.official && e.official.photo
+              ? `<img class="official-photo" src="${e.official.photo}" alt="${e.name}">`
+              : `<div class="official-photo official-photo-placeholder">&#128100;</div>`}
+            <div class="official-name">${e.name}</div>
+            <div class="official-title">${e.title}</div>
+            ${e.official ? `
+              ${e.official.email ? `<div class="official-contact">&#9993;&#65039; ${e.official.email}</div>` : ''}
+              ${e.official.phone ? `<div class="official-contact">&#128222; ${e.official.phone}</div>` : ''}
+              ${e.official.addr1 ? `<div class="official-contact">&#128205; ${e.official.addr1}${e.official.addr3 ? ', ' + e.official.addr3 : ''}</div>` : ''}
+              ${e.official.about ? `<div class="official-about">${e.official.about}</div>` : ''}
+            ` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `)}
+  `;
 }
 
 function renderPlayOfficials() {
