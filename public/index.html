@@ -562,9 +562,31 @@ main { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; paddin
 ::-webkit-scrollbar-track { background: var(--bg-soft); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--bpl-blue-light); }
+
+.gcr-warning-banner {
+  background: #fff3cd;
+  color: #856404;
+  border: 2px solid #ffc107;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 12px 0 20px;
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+}
+.gcr-warning-banner strong {
+  color: #533f03;
+  text-transform: uppercase;
+}
+
 </style>
 </head>
 <body>
+<div class="gcr-warning-banner" id="gcrWarningBanner">
+  <strong>Please Note:</strong> Any outgoing message or copy you draft from any of these prompts must go through GCR approval. GCR reviews submissions and will send you a note once approved. If you need to send urgently, e-mail <a href="mailto:governmentaffairs@bklynlibrary.org" style="color:#533f03;text-decoration:underline;">governmentaffairs@bklynlibrary.org</a>.
+</div>
+
 <div class="bg-decor"></div>
 <div class="bg-dots"></div>
 
@@ -917,6 +939,12 @@ function getLevelInfo(xp) {
 // VIEW ROUTING
 // ═══════════════════════════════════════════════════════════════
 function show(view) {
+  if (view === 'play' && !sessionStorage.getItem('gcrWarningSeen')) {
+    setTimeout(() => {
+      alert('Please Note: Any outgoing message or copy you draft from any of these prompts must go through GCR approval. GCR reviews submissions and will send you a note once approved. If you need to send urgently, e-mail governmentaffairs@bklynlibrary.org.');
+      sessionStorage.setItem('gcrWarningSeen', 'true');
+    }, 300);
+  }
   if ((view === 'play' || view === 'library') && !hasUserInfo()) { openUserModal(view); return; }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
