@@ -946,6 +946,8 @@ function populateModalBranches() {
 
 function openUserModal(targetView) {
   populateModalBranches();
+  document.getElementById('modalPlayed').value = '';
+  document.getElementById('modalForm').innerHTML = '';
   document.getElementById('userModal').classList.add('show');
   window.modalTargetView = targetView;
 }
@@ -954,21 +956,67 @@ function closeUserModal() {
   document.getElementById('userModal').classList.remove('show');
 }
 
+function renderModalStep() {
+  const played = document.getElementById('modalPlayed').value;
+  const formDiv = document.getElementById('modalForm');
+  if (!played) { formDiv.innerHTML = ''; return; }
+
+  if (played === 'Yes') {
+    const staffOpts = DATA.staff.filter(s => s.name && s.name !== '(Unassigned)').map(s => '<option value="' + s.id + '">' + s.name + (s.branch ? ' \u2014 ' + s.branch : '') + '</option>').join('');
+    const branchOpts = DATA.branches.map(b => '<option value="' + b.id + '">' + b.name + '</option>').join('');
+    formDiv.innerHTML = '<div class="form-group"><label class="form-label">Select your profile <span class="req">*</span></label><select class="form-select" id="modalStaff"><option value="">Choose your name...</option>' + staffOpts + '</select></div><div class="form-group"><label class="form-label">Confirm your branch <span class="req">*</span></label><select class="form-select" id="modalBranch"><option value="">Select your branch...</option>' + branchOpts + '</select></div>';
+  } else {
+    const branchOpts = DATA.branches.map(b => '<option value="' + b.id + '">' + b.name + '</option>').join('');
+    const preName = sessionState.name || sessionStorage.getItem('navigator_name') || '';
+    const preEmail = sessionState.email || sessionStorage.getItem('navigator_email') || '';
+    const preBranch = sessionState.branchId || sessionStorage.getItem('navigator_branchId') || '';
+    formDiv.innerHTML = '<div class="form-group"><label class="form-label">Name <span class="req">*</span></label><input class="form-input" id="modalName" placeholder="Your name" value="' + preName + '"></div><div class="form-group"><label class="form-label">Branch <span class="req">*</span></label><select class="form-select" id="modalBranch"><option value="">Select your branch...</option>' + branchOpts + '</select></div><div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input class="form-input" id="modalEmail" type="email" placeholder="you@bklynlibrary.org" value="' + preEmail + '"></div>';
+    if (preBranch) {
+      const sel = document.getElementById('modalBranch');
+      if (sel) {
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === preBranch) { sel.options[i].selected = true; break; }
+        }
+      }
+    }
+  }
+}
+
 function submitUserModal() {
-  const name = document.getElementById('modalName').value.trim();
-  const branchId = document.getElementById('modalBranch').value;
-  const email = document.getElementById('modalEmail').value.trim();
-  if (!name) return showToast('Please enter your name', 'error');
-  if (!branchId) return showToast('Please select your branch', 'error');
-  if (!email) return showToast('Please enter your email', 'error');
-  sessionState.name = name;
-  sessionState.branchId = branchId;
-  sessionState.email = email;
-  sessionState.played = 'No';
-  sessionState.staffId = '';
-  sessionStorage.setItem('navigator_name', name);
-  sessionStorage.setItem('navigator_branchId', branchId);
-  sessionStorage.setItem('navigator_email', email);
+  const played = document.getElementById('modalPlayed').value;
+  if (!played) return showToast('Please select whether you have played before', 'error');
+
+  if (played === 'Yes') {
+    const staffId = document.getElementById('modalStaff').value;
+    if (!staffId) return showToast('Please select your profile', 'error');
+    const s = DATA.staff.find(x => x.id === staffId);
+    if (!s) return showToast('Profile not found', 'error');
+    const branchId = document.getElementById('modalBranch').value;
+    if (!branchId) return showToast('Please confirm your branch', 'error');
+    sessionState.staffId = staffId;
+    sessionState.name = s.name;
+    sessionState.email = s.email || '';
+    sessionState.branchId = branchId;
+    sessionState.played = 'Yes';
+    sessionStorage.setItem('navigator_name', s.name);
+    sessionStorage.setItem('navigator_branchId', branchId);
+    sessionStorage.setItem('navigator_email', s.email || '');
+  } else {
+    const name = document.getElementById('modalName').value.trim();
+    const branchId = document.getElementById('modalBranch').value;
+    const email = document.getElementById('modalEmail').value.trim();
+    if (!name) return showToast('Please enter your name', 'error');
+    if (!branchId) return showToast('Please select your branch', 'error');
+    if (!email) return showToast('Please enter your email', 'error');
+    sessionState.name = name;
+    sessionState.branchId = branchId;
+    sessionState.email = email;
+    sessionState.played = 'No';
+    sessionState.staffId = '';
+    sessionStorage.setItem('navigator_name', name);
+    sessionStorage.setItem('navigator_branchId', branchId);
+    sessionStorage.setItem('navigator_email', email);
+  }
   closeUserModal();
   show(window.modalTargetView);
 }
@@ -1796,22 +1844,18 @@ loadData();
 </script>
 
   <div id="userModal" class="modal-overlay">
-    <div class="modal">
+    <div class="modal" id="modalInner">
       <h2>Welcome to the Navigator</h2>
-      <p>Please enter your info to get started.</p>
-      <div class="form-group">
-        <label class="form-label">Name <span class="req">*</span></label>
-        <input class="form-input" id="modalName" placeholder="Your name">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Branch <span class="req">*</span></label>
-        <select class="form-select" id="modalBranch">
-          <option value="">Select your branch...</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email <span class="req">*</span></label>
-        <input class="form-input" id="modalEmail" type="email" placeholder="you@bklynlibrary.org">
+      <div id="modalBody">
+        <div class="form-group">
+          <label class="form-label">Have you played before? <span class="req">*</span></label>
+          <select class="form-select" id="modalPlayed" onchange="renderModalStep()">
+            <option value="">Select...</option>
+            <option value="Yes">Yes, I have a profile</option>
+            <option value="No">No, this is my first time</option>
+          </select>
+        </div>
+        <div id="modalForm"></div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
